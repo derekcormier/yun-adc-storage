@@ -1,4 +1,5 @@
 #include<Process.h>
+#include<math.h>
 
 void setup() {
   Bridge.begin();  
@@ -6,29 +7,21 @@ void setup() {
 }
 
 void loop() {
-  char request[300] = "http://192.168.1.10:3000/rec/"; 
-  bool isFirstDatum = true; 
-  while(strlen(request) < 300) {
-    if(!isFirstDatum) {
-       strcat(request, ",");
-    }
+  String request = "http://192.168.1.10:3000/rec/";
+  while(request.length() < 300) {
     delay(150);
-    writeValue(request, analogRead(0));
-    isFirstDatum = false;
+    request += convertToBase32(analogRead(0));
   }
   sendRequest(request);
 }
 
-char *writeValue(char request[],int ADCValue) {
-  char value[6];
+String writeValue(String request,int ADCValue) {
+  String value = convertToBase32(ADCValue);
   
-  sprintf(value, "%d", ADCValue);
-  strcat(request, value); 
-  
-  return (char *) request;
+  return request + value;
 }
 
-void sendRequest(char request[]) {
+void sendRequest(String request) {
   Process p;
   
   Serial.println(request);
@@ -38,3 +31,17 @@ void sendRequest(char request[]) {
   p.run();
 }
   
+String convertToBase32(int decVal) {
+  String base32Val = "";
+  
+  for(int i = 1; i >= 0; i--) {
+    int currentVal = ((int)floor(decVal/pow(32,i)) % 32);
+    if(currentVal < 10) {
+      base32Val += (char) (currentVal + '0'); 
+    } else if (currentVal >= 10){
+      base32Val += (char) (currentVal - 10 + 'A');
+    }
+  }
+  
+  return base32Val;
+}
