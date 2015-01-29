@@ -21,7 +21,7 @@ void loop() {
   if(client) {
     processClientRequest(client);
    
-    client.stop(); 
+    client.stop();
   }
   
   if(getData == true) {
@@ -31,8 +31,14 @@ void loop() {
   
     while(request.length() < 300) {
       delay(150);
-      request += convertToBase32(analogRead(0));
+      
+      unsigned long timeOfMeasurement = millis();
+      int adcValue = analogRead(0);
+      request += convertToBase32(timeOfMeasurement,7);  // seven chars to fit largest unsigned long
+      request += convertToBase32((long)adcValue,2);
     }
+  
+    Serial.println(request);
   
     sendRequest(request);
   }
@@ -55,13 +61,6 @@ void processClientRequest(YunClient client) {
 }
 
 
-String writeValue(String request,int ADCValue) {
-  String value = convertToBase32(ADCValue);
-  
-  return request + value;
-}
-
-
 void sendRequest(String request) {
   Process p;
   
@@ -71,10 +70,10 @@ void sendRequest(String request) {
 }
 
   
-String convertToBase32(int decVal) {
+String convertToBase32(long decVal, int strSize) {
   String base32Val = "";
   
-  for(int i = 1; i >= 0; i--) {
+  for(int i = strSize - 1; i >= 0; i--) {
     int currentVal = ((int)floor(decVal/pow(32,i)) % 32);
     if(currentVal < 10) {
       base32Val += (char) (currentVal + '0'); 
