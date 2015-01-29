@@ -1,5 +1,21 @@
 var dataCollection = new Mongo.Collection("data");
 
+if(Meteor.isClient) {
+	UI.body.events({
+		'click #collect': function(e) {
+			var status = document.getElementById("status");
+			status.innerHTML = "Collecting Data";
+			arduinoAjax("collect");
+		},
+
+		'click #stop': function(e) {
+			var status = document.getElementById("status");
+			status.innerHTML = "Stopped Data Collection";
+			arduinoAjax("stop");
+		}
+	});
+}
+
 Router.map(function(){
 	this.route('rec', {
 		where: 'server',
@@ -17,3 +33,20 @@ Router.map(function(){
 		}
 	});
 });
+
+Router.map(function(){
+	this.route('dash', {
+		where: 'client',
+		path: '/dash',
+		action: function() {
+			
+		}
+	});
+});
+
+var arduinoAjax = function(endpoint) {
+	var xmlhttp = new XMLHttpRequest();
+
+	xmlhttp.open("GET", "http://arduinoyun:5555/arduino/" + endpoint, true);
+	xmlhttp.send();
+}
