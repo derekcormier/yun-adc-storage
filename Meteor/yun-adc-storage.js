@@ -1,5 +1,3 @@
-var dataCollection = new Mongo.Collection("data");
-
 if(Meteor.isClient) {
 	UI.body.events({
 		'click #collect': function(e) {
@@ -21,6 +19,7 @@ Router.map(function(){
 		where: 'server',
 		path: '/rec/:data',
 		action: function() {
+			var dataCollection = new Mongo.Collection("data");
 			var data = this.params.data.match(/.{1,9}/g);;
 			for(var i = 0; i < data.length; i++) {
 				var time = data[i].substring(0,7);
@@ -32,21 +31,13 @@ Router.map(function(){
 			this.response.end('ok');
 		}
 	});
-});
-
-Router.map(function(){
-	this.route('dash', {
-		where: 'client',
-		path: '/dash',
-		action: function() {
-			
-		}
-	});
+	this.route('dash');
 });
 
 var arduinoAjax = function(endpoint) {
 	var xmlhttp = new XMLHttpRequest();
 
-	xmlhttp.open("GET", "http://arduinoyun:5555/arduino/" + endpoint, true);
+	xmlhttp.open("GET", "http://arduinoyun.local/arduino/" + endpoint, true);
 	xmlhttp.send();
+	console.log("sent AJAX request");
 }
