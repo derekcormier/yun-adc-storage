@@ -1,5 +1,9 @@
+if(Meteor.isServer) {
+	var dataCollection = new Mongo.Collection("data");
+}
+
 if(Meteor.isClient) {
-	UI.body.events({
+	Template.dash.events({
 		'click #collect': function(e) {
 			var status = document.getElementById("status");
 			status.innerHTML = "Collecting Data";
@@ -18,8 +22,7 @@ Router.map(function(){
 	this.route('rec', {
 		where: 'server',
 		path: '/rec/:data',
-		action: function() {
-			var dataCollection = new Mongo.Collection("data");
+		action: function() {			
 			var data = this.params.data.match(/.{1,9}/g);;
 			for(var i = 0; i < data.length; i++) {
 				var time = data[i].substring(0,7);
