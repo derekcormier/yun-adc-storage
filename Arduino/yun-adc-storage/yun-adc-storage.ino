@@ -2,7 +2,9 @@
 #include<Process.h>
 #include<YunServer.h>
 #include<YunClient.h>
-#include<math.h>
+#include <avr/pgmspace.h>
+
+PROGMEM const char LARGEST_ULONG_BASE_32_LEN = 7;
 
 YunServer server;
 bool getData = false;
@@ -27,6 +29,7 @@ void loop() {
   if(getData == true) {
     Serial.println("Recording...");
     
+    bool isFirstDatum = true;
     String request = "http://192.168.1.10:3000/rec/";
   
     while(request.length() < 300) {
@@ -34,8 +37,15 @@ void loop() {
       
       unsigned long timeOfMeasurement = millis();
       int adcValue = analogRead(0);
-      request += convertToBase32(timeOfMeasurement, 7);  // seven chars to fit largest unsigned long
+      
+      if(isFirstDatum) {
+        isFirstDatum = false;
+      } else {
+        request += ",";
+      }
       request += convertToBase32((long)adcValue, 2);
+      request += convertToBase32(timeOfMeasurement, 
+                                 getBase32StringLength(timeOfMeasurement));
     }
   
     Serial.println(request);
@@ -82,4 +92,12 @@ String convertToBase32(unsigned long decVal, int strLen) {
     }
   }
   return base32Val;
+}
+
+int getBase32StringLength(unsigned long decVal) {
+  for(int i = 0; i < LARGEST_ULONG_BASE_32_LEN; i++){
+    if(decVal < pow(32, i)) {
+      return i; 
+    }
+  }
 }

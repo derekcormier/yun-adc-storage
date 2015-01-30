@@ -23,10 +23,11 @@ Router.map(function(){
 		where: 'server',
 		path: '/rec/:data',
 		action: function() {			
-			var data = this.params.data.match(/.{1,9}/g);;
+			var data = this.params.data.split(",");
 			for(var i = 0; i < data.length; i++) {
-				var time = data[i].substring(0,7);
-				var datum = data[i].substring(8,9);
+				var datum = data[i].substring(0,2);
+				var time = data[i].substring(2);
+				
 				dataCollection.insert({time: parseInt(time, 32),
 					data: parseInt(datum, 32)});
 			}
