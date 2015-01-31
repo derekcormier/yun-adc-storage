@@ -24,6 +24,8 @@ bool beginDataCollection = false;
 unsigned long dataCollectionStartTime = 0;
 
 
+unsigned long totalMeasurementsTaken = 0;
+
 void setup() {
   // Init bridge between AVR and Linux
   Bridge.begin();
@@ -83,8 +85,10 @@ void loop() {
       request += convertToBase32((long)adcValue, 2);
       request += convertToBase32(timeOfMeasurement, 
                                  getBase32StringLength(timeOfMeasurement));
+                                 
+      totalMeasurementsTaken++;
       
-      delay(100);  // TODO: Let user set from dash?
+      //delay(100);  // TODO: Let user set from dash?
     }
     
     // Print request for debugging
@@ -105,6 +109,7 @@ void processClientRequest(YunClient client) {
   if(request == "collect") {
     getData = true;
     beginDataCollection = true;
+    totalMeasurementsTaken = 0;
     Serial.println(F("Starting data collection"));
   }
   
@@ -112,6 +117,8 @@ void processClientRequest(YunClient client) {
   if(request == "stop") {
     getData = false;
     Serial.println(F("Stopping data collection"));
+    Serial.print(F("Total measurements taken: "));
+    Serial.println(totalMeasurementsTaken);
   }
 }
 

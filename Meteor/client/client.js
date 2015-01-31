@@ -1,16 +1,25 @@
 // Collection to contain ADC data from Yun
 var dataCollection = new Mongo.Collection('Data')
 
+// Collection which lets the client know if there was an update
+var updateCollection = new Mongo.Collection('UpdateReady')
+
 // Handle for the subscription, used to stop and start
 var subscription = null
 
+// Date when client started collecting data per session
+var sessionRecordingDate = null
 
 Template.dash.events({
 	// Fired when the collect button is clicked
 	'click #collect': function(e) {
 	
+		sessionRecordingDate = new Date();
+	
+		Meteor.call('setDate', sessionRecordingDate);
+	
 		// Subscribe to the server publish
-		subscription = Meteor.subscribe('Data', function() {
+		subscription = Meteor.subscribe('Data');/*, function() {
 			dataCollection.find({}).observe({
 				// when data is added, redraw the chart
 				added: function(id, fields) {
@@ -21,7 +30,7 @@ Template.dash.events({
 					  createChart()
 				}
 			});
-		});
+		});*/
 	
 		// Tell the user we're getting data
 		var status = document.getElementById("status")
@@ -61,6 +70,15 @@ Router.map(function() {
 	this.route('dash', {
 		where: 'client',
 		action: function() {
+			Meteor.subscribe('dataUpdate', function() {
+				updateCollection.find({}).observe({
+					// when data is added, redraw the chart
+					added: function(id, fields) {
+						console.log('update ready');	
+						createChart()
+					}
+				});
+			});
 			this.render('dash')
 		}
 	});
@@ -88,9 +106,14 @@ createChart = function() {
 	// Put the data from the collection into an array for highcharts
 	// 	one at a time
 	adcData.forEach(function(datum) {
-		var point = [datum.time, datum.data]
+		var datetime = new Date(datum.time);
+		var timeString = datetime.getHours() + ":" + datetime.getMinutes() + ":" +
+			datetime.getSeconds() + "." + datetime.getMilliseconds();
+		var point = [datetime.getTime(), datum.data]
 		seriesData.push(point)
 	});
+	
+	console.log(seriesData);
 
 	$('#adcChart').highcharts({
 		chart: {
@@ -100,7 +123,7 @@ createChart = function() {
 			text: 'ADC Readings from Arduino Yun'
 		},
 		xAxis: {
-			type: 'time',
+			type: 'datetime',
 			title: {
 				text: 'Time (ms)'
 			}
@@ -119,6 +142,9 @@ createChart = function() {
 			series: {
 				animation: false
 			}
+		},
+		tooltip: {
+			enabled: false
 		},
 		series: [{
 			name: 'ADC Data',
