@@ -8,6 +8,8 @@ PROGMEM const char LARGEST_ULONG_BASE_32_LEN = 7;
 
 YunServer server;
 bool getData = false;
+bool beginDataCollection = false;
+unsigned long dataCollectionStartTime = 0;
 
 void setup() {
   Bridge.begin();  
@@ -27,15 +29,20 @@ void loop() {
   }
   
   if(getData == true) {
-    Serial.println("Recording...");
+    Serial.println(F("Recording..."));
     
     bool isFirstDatum = true;
-    String request = "http://192.168.1.10:3000/rec/";
+    String request = F("http://192.168.1.10:3000/rec/");
+  
+    if(beginDataCollection) {
+      dataCollectionStartTime = millis();
+      beginDataCollection = false; 
+    }
   
     while(request.length() < 300) {
-      delay(150);
-      
-      unsigned long timeOfMeasurement = millis();
+      unsigned long timeOfMeasurement = millis() - dataCollectionStartTime;
+      Serial.println(millis());
+      Serial.println(millis() - dataCollectionStartTime);
       int adcValue = analogRead(0);
       
       if(isFirstDatum) {
@@ -46,6 +53,8 @@ void loop() {
       request += convertToBase32((long)adcValue, 2);
       request += convertToBase32(timeOfMeasurement, 
                                  getBase32StringLength(timeOfMeasurement));
+                                 
+      delay(100);
     }
   
     Serial.println(request);
@@ -61,12 +70,13 @@ void processClientRequest(YunClient client) {
   
   if(request == "collect") {
     getData = true;
-    Serial.print(F("Starting data collection"));
+    beginDataCollection = true;
+    Serial.println(F("Starting data collection"));
   }
   
   if(request == "stop") {
     getData = false;
-    Serial.print(F("Stopping data collection"));
+    Serial.println(F("Stopping data collection"));
   }
 }
 
@@ -95,7 +105,7 @@ String convertToBase32(unsigned long decVal, int strLen) {
 }
 
 int getBase32StringLength(unsigned long decVal) {
-  for(int i = 0; i < LARGEST_ULONG_BASE_32_LEN; i++){
+  for(int i = 1; i < LARGEST_ULONG_BASE_32_LEN; i++){
     if(decVal < pow(32, i)) {
       return i; 
     }
