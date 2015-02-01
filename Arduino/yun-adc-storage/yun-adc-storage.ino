@@ -29,8 +29,6 @@ unsigned int delayBetweenPoints = 0;
 void setup() {
   // Init bridge between AVR and Linux
   Bridge.begin();
-  // Init serial for debugging
-  Serial.begin(9600);
   
   // Allow the Yun to accept REST requests
   server.listenOnLocalhost();
@@ -71,10 +69,13 @@ void loop() {
       // get ADC value
       int adcValue = analogRead(0);
 
-      // If this the first datum, don't add a comma
+      // If this the first datum, don't add a comma or delay
       if(isFirstDatum) {
         isFirstDatum = false;
       } else {
+        // Only delay if this is not the first point. Could speed up collection rate
+        //  if delay is large by not waiting after WiFi transmission
+        delay(delayBetweenPoints);  // User defines delay
         request += ",";
       }
       
@@ -86,8 +87,6 @@ void loop() {
       request += convertToBase32((long)adcValue, 2);
       request += convertToBase32(timeOfMeasurement, 
                                  getBase32StringLength(timeOfMeasurement));
-      
-      delay(delayBetweenPoints);  // User defines delay
     }
     
     // Send the request to the Meteor sever to record

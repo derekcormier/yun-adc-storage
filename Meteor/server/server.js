@@ -58,7 +58,6 @@ Meteor.methods({
 	// Set the datetime that the collection started
 	setDate: function(clientStartDate) {
 		startDate = clientStartDate
-		console.log(startDate.getTime())
 	},
 	
 	// Write data to the Data collection

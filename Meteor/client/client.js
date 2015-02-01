@@ -81,7 +81,6 @@ Router.map(function() {
 				updateCollection.find({}).observe({
 					// when data is added, redraw the chart
 					added: function(id, fields) {
-						console.log('update ready')
 						createChart()
 					}
 				})
@@ -101,7 +100,6 @@ var arduinoAjax = function(endpoint) {
 
 	xmlhttp.open('GET', 'http://arduinoyun.local/arduino/' + endpoint, true)
 	xmlhttp.send()
-	console.log('sent AJAX request')
 }
 
 
@@ -156,9 +154,6 @@ createChart = function() {
 			series: {
 				animation: false
 			}
-		},
-		tooltip: {
-			enabled: false
 		},
 		series: [{
 			name: 'ADC Data',
