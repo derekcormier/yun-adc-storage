@@ -1,5 +1,5 @@
 # yun-adc-storage
-A way to get large batches of ADC data from a Yún to a Meteor MongoDB server
+A way to get large batches of ADC data from an Arduino Yún to a Meteor server
 
 The point of this project is to spend as little time as possible sending ADC data to Meteor and more time getting precious data!
 
@@ -62,7 +62,7 @@ When trying to take collect and transmit measurements over WiFi with the Arduino
 E = (measurements recorded per second) * (time between WiFi transmissions)
 ```
 
-What follows is a brief discusion of how this project has been optimized to get the highest E value possible
+What follows is a brief discusion of how this project has been optimized to get the highest E value possible. *Note: all optimization was performed with a reading delay at 0 ms, over WiFi, without modifying the Linux side of the Yún.*
 
 ### The old way
 
@@ -147,4 +147,8 @@ So, because we want to squeeze in as much data per request, we need to choose th
 
 The fact that this project is intended for WiFi is also a source of decreased efficiency. Depending on the strength of the WiFi signals for the Yún, or you might have issues with your connection such as slow transfer or disconnecting.
 
-*Note: all optimization was performed with delay at 0 ms.*
+### Further Optimization on the Linux side of the Yún
+
+*Because this project was designed not to modify any of the Linux side or use a supplemental micro SD, these options were explored, but no attempts at implementation were made*
+
+The Arduino bridge that is used to send data between the AVR and the Atheros AR9331 is a python script on the server side. Several users on the Arduino forums have mused that a `C` bridge implementation could be faster and more efficient than the python implementation. Unfortunately, without a supplemental storage device (a micro SD card), it is unlikely that one would be able to compile a `C` program. For information on doing so, see [here](http://playground.arduino.cc/Hardware/Yun#Compiling_on_the_Yun).
