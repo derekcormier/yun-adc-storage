@@ -3,6 +3,55 @@ A way to get large batches of ADC data from a Yún to a Meteor MongoDB server
 
 The point of this project is to spend as little time as possible sending ADC data to Meteor and more time getting precious data!
 
+## What you need
+- An Arduino Yún
+- The [beta or nightly build](http://arduino.cc/en/Main/Software) of Arduino (the Yún is unsupported in the non-beta release)
+- [Meteor](https://www.meteor.com/)
+
+
+## What is this project good for?
+
+This project can be used for many things, but some applications are a better fit than others.
+
+Some good applications:
+- Capturing light sensor readings at a fairly slow rate (about 4 times per second)
+- Reporting fermentation temperature of beer in a fermenter every minute (what I'll use it for!)
+- For fun!
+
+Some less-than-optimal applications:
+- Viewing high-frequency signals
+- Attempting to find a voltage spike that will only last a few milliseconds
+- Trying to impress a love interest
+
+Here's why. A picture is worth a thousand words:
+![dash image](https://dl.dropboxusercontent.com/u/42052444/adc-yun-storage-cap.png "Why this project is bad for high frequency")
+
+See those big gaps? Because the data is periodically sent over Wifi to a Meteor server, the transfer process can create large gaps in data that might "hide" important data from you. The device cannot record at the same time that it is sending data over WiFi.
+
+You can make the data and graph fit your purpose by modifying the delay and points to plot.
+
+### User beware
+
+If you would like to try to use this to for any of the less-than-optimal applications, you can sure go ahead and try. Here're a few things you should know:
+
+- Data points are taken, on average every 1.6 milliseconds. This means that this project (when it's actually sampling) samples at about 625 Hz. This means that you could perhaps make out a sinusoid at 156.25 Hz (1/4 the sampling rate), but it certainly wont be pretty. The intervals between data points are full milliseconds or more, so you will undoubtedly get a strange looking measurement. Unfortunately I don't have access to a function generator to display this to you, but you get the idea. A sinusoid at 78.125Hz (1/8 the sampling rate) would be recognizable, but you may not be able to make out precise things such as amplitude or period.
+- You will be frustrated trying to use this as an oscilloscope. Don't do it unless you're desperate or a glutton for punishment.
+ 
+## How to use it
+
+Setting it up:
+
+1. Program `yun-adc-storage.ino` onto your Arduino Yún
+2. Navigate to the `/Meteor/yun-adc-storage` folder and run `sudo meteor`
+
+Using the dashboard:
+
+1. Navigate to `http://localhost:3000/dash`
+2. Choose a delay within 0 to 60000
+3. Choose how many points you would like plotted within 0 to 500
+4. Click *Start collecting*. You will begin to see data from the Yún's 0th ADC port
+5. When you're done collecting data, click *Stop collecting*. Your data will be saved in the Data MongoDB collection with the time being the milliseconds since epoch
+
 ## A few words on optimizing for efficiency
 
 When trying to take collect and transmit measurements over WiFi with the Arduino Yún, one of the biggest issues is the time it takes to transmit the data. In this project, the data is sent in an HTTP request to a Meteor server to be recorded. To measure efficiency, we will use the following equation:
@@ -67,30 +116,30 @@ That's quite a bit better than what we had before.
 
 ### Dealing with Arduino's Process library
 
-If you checked out the CSV files above, you might have noticed something. The efficiency of the request was different depending on the length of the the request...
+If you checked out the CSV files above, you might have noticed something. The efficiency of the request was different depending on the length of the the request. Also, the request lengths that I tested stopped at 350 characters...
 
 One of the biggest contributing factors to low efficiency in this project is the time it takes to send a cURL request to Meteor. Using the `Process.run()` method has a bit of a quirk to it, which is illustrated (roughly) below below:
 
 | Request Length (chars) |Process Speed|Correctly Executed|
-|----------------|-------------|------------------|
-| 0 - 350        | Pretty fast | Always           |
-| 350 - 490      | Really slow | Always           |
-| 490 and higher | Super fast  | Never            |
+|------------------------|-------------|------------------|
+| 0 - 350                | Pretty fast | Always           |
+| 350 - 490              | Really slow | Always           |
+| 490 and higher         | Super fast  | Never            |
 
 This appears to also be affected by the amount of RAM your sketch is using on your AVR; Less memory available, smaller window for a decent execution. This means also that your sketch's results may vary from these.
 
-One might think that using `Process.runAsynchronously` would improve performance, because we aren't waiting for a response. Here's what it'll do for you:
+One might think that using `Process.runAsynchronously()` would improve performance, because we aren't waiting for a response. Here's what it'll do for you:
 
-| Request Length (chars) |Process Speed|Correctly Executed|
-|----------------|-------------|------------------|
-| 0 - 300        | Pretty fast | Almost Never           |
-| 300 - 350      | Pretty fast | Enough to be dangerous|
-| 350 - 490      | Really slow | Sometimes           |
-| 490 and higher | Super fast  | Never            |
+| Request Length (chars) |Process Speed|  Correctly Executed   |
+|------------------------|-------------|-----------------------|
+| 0 - 300                | Pretty fast | Almost Never          |
+| 300 - 350              | Pretty fast | Enough to be dangerous|
+| 350 - 490              | Really slow | Sometimes             |
+| 490 and higher         | Super fast  | Never                 |
 
 Once again, this is the case for this sketch. If you aren't running the cURL requests very closely together in time, your results will likely be better. Also, when I say the requests are executed correctly enough to be dangerous in the 300 to 350 range, I mean it. Everything might go great for a while, but once in a while you'll likely see requests that didn't make it through to Meteor.
 
-So, because we want to squeeze in as much data per request, we need to choose the upper limit of the request length to get decently fast requests and consistently correct execution, and because we'd like to make sure that our data is getting where it needs to be, we will use `Process.run`.
+So, because we want to squeeze in as much data per request, we need to choose the upper limit of the request length to get decently fast requests and consistently correct execution, and because we'd like to make sure that our data is getting where it needs to be, we will use `Process.run()`.
 
 ### Sending data over WiFi
 
