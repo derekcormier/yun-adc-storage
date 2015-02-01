@@ -2,3 +2,96 @@
 A way to get large batches of ADC data from a Yún to a Meteor MongoDB server
 
 The point of this project is to spend as little time as possible sending ADC data to Meteor and more time getting precious data!
+
+## A few words on optimizing for efficiency
+
+When trying to take collect and transmit measurements over WiFi with the Arduino Yún, one of the biggest issues is the time it takes to transmit the data. In this project, the data is sent in an HTTP request to a Meteor server to be recorded. To measure efficiency, we will use the following equation:
+
+```
+E = (measurements recorded per second) * (time between WiFi transmissions)
+```
+
+What follows is a brief discusion of how this project has been optimized to get the highest E value possible
+
+### The old way
+
+To begin with, the project was designed to send data as follows:
+
+```
+http://example:3000/rec/1222300,800,1222400,905, ...
+
+rec - tells Meteor to record the data after it
+1222300,800 - A data point. The first value is the time in milliseconds since
+              the measurement was taken. The second value is the ADC value.
+```
+
+Depending on what the time was when the temperature was taken and the ADC value, the value with the trailing comma could take anywhere from four (ex. 0,0,) to sixteen (ex. 4294967295,1024,) characters. With common values, the efficiency, E, is very low, less than one on average.
+
+More results [here](https://www.dropbox.com/s/4qgsr2xrkz4bo2e/EfficiencyDecimalWithComma.csv?dl=0).
+
+The real problem with this method is that each measurement takes up so much space, giving us less measurements per transmissions. And since transmissions are so time expensive... We get low efficiency.
+
+### A better way
+
+So how can we make the data take up less space in a URL?
+
+The solution I came up with was to encode all of the data into base 32. [Read more about base 32 encoding here.](http://en.wikipedia.org/wiki/Base32) Base 32 is great because all of the characters used are URL safe!
+
+So, here's the same URL as shown above in base32 encoding:
+```
+http://example:3000/rec/159KS,PO,159O0,S9, ...
+```
+
+We just saved 6 characters for two measurements! Pretty slick.
+
+Now, depending on the data, our values take anywhere from (ex. 0,0,) to eleven (ex. 3VVVVVV,VV,) characters. With common values the efficiency is quite a bit better, about 8 on average.
+
+More results [here](https://www.dropbox.com/s/estrplf8mf1v6fn/EfficiencyBase32WithComma.csv?dl=0).
+
+### Tweaking even further
+
+Now, if we play our cards right, we can get rid of one of those commas. By mandating that the ADC value must always contain two characters, and that the ADC value will always be before the time value, we can be assured that the first two charcters in the reading are the ADC value, and the rest is the time of the reading.
+
+Now our URL looks like this:
+```
+http://example:3000/rec/PO159KS,S9159O0, ...
+```
+
+That's a savings of one character per measurement.
+
+Measurements can now be four (ex. 000,) to ten characters (ex. VVVVVVVV3,). And that might not sounds like a big deal, but when time is precious, it's worth it! The best efficiency at a common value is now around 9.5 on average.
+
+More results [here](https://www.dropbox.com/s/wtiil403mxyiv3o/EfficiencyBase32NoComma.csv?dl=0).
+
+That's quite a bit better than what we had before.
+
+### Dealing with Arduino's Process library
+
+If you checked out the CSV files above, you might have noticed something. The efficiency of the request was different depending on the length of the the request...
+
+One of the biggest contributing factors to low efficiency in this project is the time it takes to send a cURL request to Meteor. Using the `Process.run()` method has a bit of a quirk to it, which is illustrated (roughly) below below:
+
+| Request Length (chars) |Process Speed|Correctly Executed|
+|----------------|-------------|------------------|
+| 0 - 350        | Pretty fast | Always           |
+| 350 - 490      | Really slow | Always           |
+| 490 and higher | Super fast  | Never            |
+
+This appears to also be affected by the amount of RAM your sketch is using on your AVR; Less memory available, smaller window for a decent execution. This means also that your sketch's results may vary from these.
+
+One might think that using `Process.runAsynchronously` would improve performance, because we aren't waiting for a response. Here's what it'll do for you:
+
+| Request Length (chars) |Process Speed|Correctly Executed|
+|----------------|-------------|------------------|
+| 0 - 300        | Pretty fast | Almost Never           |
+| 300 - 350      | Pretty fast | Enough to be dangerous|
+| 350 - 490      | Really slow | Sometimes           |
+| 490 and higher | Super fast  | Never            |
+
+Once again, this is the case for this sketch. If you aren't running the cURL requests very closely together in time, your results will likely be better. Also, when I say the requests are executed correctly enough to be dangerous in the 300 to 350 range, I mean it. Everything might go great for a while, but once in a while you'll likely see requests that didn't make it through to Meteor.
+
+So, because we want to squeeze in as much data per request, we need to choose the upper limit of the request length to get decently fast requests and consistently correct execution, and because we'd like to make sure that our data is getting where it needs to be, we will use `Process.run`.
+
+### Sending data over WiFi
+
+The fact that this project is intended for WiFi is also a source of decreased efficiency. Depending on the strength of the WiFi signals for the Yún, or you might have issues with your connection such as slow transfer or disconnecting.
