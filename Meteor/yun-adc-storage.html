@@ -9,7 +9,8 @@
 <template name="dash">
 	<button id="collect">Start collecting</button>
 	<button id="stop">Stop collecting</button>
-	<button id="clear">Clear data</button>
+	Delay in ms between points: <input id="delay" type="number" max="60000" value="500">
+	Points to display: <input id="points" type="number" max="500" value="100">
 	<div id="status"></div>
 	<div id="adcChart"></div>
 </template>

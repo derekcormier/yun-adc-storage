@@ -10,11 +10,12 @@ var startDate = null
 // Publish data to clients
 Meteor.publish('Data', function() {
 	return dataCollection.find({}, {sort: {time: -1}, limit: 500})
-});
+})
 
+// Publish to let the client know that new data is ready
 Meteor.publish('dataUpdate', function() {
 	return updateCollection.find({}, {limit: 1})
-});
+})
 
 Router.map(function() {
 	// Route to record data to the server. Request is formatted as such:
@@ -29,38 +30,40 @@ Router.map(function() {
 		where: 'server',
 		path: '/rec/:data',
 		action: function() {
+			// Clear the update collection so the client doesn't think there's
+			//   new data available
 			updateCollection.remove({})
 		
-			var data = this.params.data.split(",")
+			// Parse the data from the 
+			var data = this.params.data.split(',')
 			for(var i = 0; i < data.length; i++) {
 				var datum = data[i].substring(0,2)
 				var time = data[i].substring(2)
 				
-				Meteor.call("writeData", time, datum);
+				Meteor.call('writeData', time, datum)
 			}
 			
+			// Let the client know that another batch of data is ready
+			//   (Workaround for the chart updating too often)
 			updateCollection.insert({ready: true})
+			
 			
 			this.response.end('ok')
 		}
-	});
-});
+	})
+})
 
 
 Meteor.methods({
-	// Clears the data from the collection
-	clearData: function() {
-		dataCollection.remove({});
-	},
-	
+	// Set the datetime that the collection started
 	setDate: function(clientStartDate) {
-		startDate = clientStartDate;
-		console.log("Set the date")
+		startDate = clientStartDate
 		console.log(startDate.getTime())
 	},
 	
+	// Write data to the Data collection
 	writeData: function(time, datum) {
 		dataCollection.insert({time: startDate.getTime() + parseInt(time, 32),
 					data: parseInt(datum, 32)})
 	}
-});
+})

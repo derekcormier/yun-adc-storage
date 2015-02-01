@@ -8,7 +8,8 @@
 PROGMEM const char LARGEST_ULONG_BASE_32_LEN = 7;
 
 // Max string length of request to send to Meteor
-PROGMEM const uint16_t REQUEST_STRING_LENGTH = 300;  // TODO: Optimize length
+// 315 is the optimized string length for largest E (~9.5)
+PROGMEM const uint16_t REQUEST_STRING_LENGTH = 315;
 
 // YunServer for REST calls
 YunServer server;
@@ -23,8 +24,7 @@ bool beginDataCollection = false;
 // System time when recording session started
 unsigned long dataCollectionStartTime = 0;
 
-
-unsigned long totalMeasurementsTaken = 0;
+unsigned int delayBetweenPoints = 0;
 
 void setup() {
   // Init bridge between AVR and Linux
@@ -50,7 +50,6 @@ void loop() {
   
   // If the client has asked to collect data, do so until they ask to stop
   if(getData == true) {
-    Serial.println(F("Recording..."));
     
     // If the datum being collected is the first in this request
     bool isFirstDatum = true;
@@ -63,7 +62,9 @@ void loop() {
       beginDataCollection = false;
     }
   
-    // If the request is not full, get more data to send
+    // If the request is not full, get more data to send (this method will allow
+    //   the request to get larger by a few characters, but not enough to cause
+    //   any issues)
     while(request.length() < REQUEST_STRING_LENGTH) {
       // Get measurement time
       unsigned long timeOfMeasurement = millis() - dataCollectionStartTime;
@@ -85,14 +86,9 @@ void loop() {
       request += convertToBase32((long)adcValue, 2);
       request += convertToBase32(timeOfMeasurement, 
                                  getBase32StringLength(timeOfMeasurement));
-                                 
-      totalMeasurementsTaken++;
       
-      //delay(100);  // TODO: Let user set from dash?
+      delay(delayBetweenPoints);  // User defines delay
     }
-    
-    // Print request for debugging
-    Serial.println(request);
     
     // Send the request to the Meteor sever to record
     sendRequest(request);
@@ -102,24 +98,27 @@ void loop() {
 
 // Processes the client's REST request
 void processClientRequest(YunClient client) {
-  String request = client.readString();
+  String request = client.readStringUntil('/');
   request.trim();
   
   // Client wants to collect data
+  //   /collect/{delayasint}  
   if(request == "collect") {
+    getDelayBetweenPoints(client);
     getData = true;
     beginDataCollection = true;
-    totalMeasurementsTaken = 0;
-    Serial.println(F("Starting data collection"));
   }
   
   // Client no longer wants to collect data
+  //   /stop
   if(request == "stop") {
     getData = false;
-    Serial.println(F("Stopping data collection"));
-    Serial.print(F("Total measurements taken: "));
-    Serial.println(totalMeasurementsTaken);
   }
+}
+
+// Get the client specified delay
+void getDelayBetweenPoints(YunClient client) {
+  delayBetweenPoints = client.parseInt();
 }
 
 
